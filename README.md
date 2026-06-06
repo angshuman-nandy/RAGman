@@ -1,0 +1,391 @@
+# RAGman
+
+A local-first experiment lab for building, iterating, and comparing document Q&A pipelines. Every stage of the RAG stack is swappable — create multiple agents with different configurations against the same documents and compare their answers side by side to find what actually works for your content.
+
+---
+
+## What it does
+
+RAGman lets you build a complete RAG pipeline through a guided wizard, ingest documents into it, and chat with the result. The key insight is that every stage is independently configurable: swap chunking strategies, retrieval methods, rerankers, or LLMs without re-uploading documents. The document overview gives you deep visibility into how each stage transforms your content.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| API | FastAPI + SQLAlchemy (async) + Alembic |
+| Background jobs | ARQ (Redis-backed task queue) |
+| Vector stores | ChromaDB · PostgreSQL + pgvector |
+| Embeddings | OpenAI · HuggingFace Sentence Transformers · Ollama |
+| LLMs | OpenAI · Anthropic Claude · Ollama |
+| Rerankers | Cohere Rerank · HuggingFace cross-encoder · LLM-based |
+| Frontend | React 18 + Vite + TypeScript + React Query |
+| Infrastructure | Docker Compose (Postgres, Redis, Chroma, Ollama) |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     React Frontend                       │
+│          Vite dev server · React Query · SSE             │
+└──────────────────────┬──────────────────────────────────┘
+                       │ HTTP / SSE
+┌──────────────────────▼──────────────────────────────────┐
+│                    FastAPI (port 8000)                   │
+│   /agents   /documents   /query   /capabilities         │
+└────────┬─────────────────────────┬───────────────────────┘
+         │ SQL (async)             │ arq jobs
+┌────────▼────────┐    ┌───────────▼──────────────────────┐
+│   PostgreSQL    │    │          ARQ Worker               │
+│  + pgvector     │    │   ingestion · chunking            │
+│  agent configs  │    │   embedding · vector store        │
+│  document meta  │    └───────┬──────────────┬────────────┘
+└─────────────────┘            │              │
+                    ┌──────────▼───┐   ┌──────▼──────┐
+                    │   ChromaDB   │   │   Ollama    │
+                    │  (vectors)   │   │  (local LLM)│
+                    └──────────────┘   └─────────────┘
+```
+
+### Query path (streaming)
+
+```
+question
+   → embed query
+   → retrieve chunks  [similarity | mmr | hybrid BM25+vec | multi-query]
+   → rerank (optional) [cohere | huggingface cross-encoder | llm]
+   → generate answer  [openai | anthropic | ollama]
+   → SSE stream tokens back to browser
+```
+
+Responses are cached in Redis keyed by `agent_id + question + document_filter`. Cache TTL and per-agent cap are configurable in `.env`.
+
+---
+
+## Pipeline stages
+
+### Ingestion
+Supported file types: **PDF**, **DOCX**, **TXT**, **Markdown**.
+
+- PDF: one `Document` per page (preserves page boundaries for chunking)
+- DOCX: paragraph-level extraction
+- TXT / MD: raw text
+
+### Chunking (5 strategies)
+
+| Strategy | Description |
+|---|---|
+| `fixed_size` | Split by exact character count |
+| `recursive` | Paragraph → sentence → word fallback *(recommended default)* |
+| `semantic` | Group text at embedding-based meaning boundaries |
+| `sentence_window` | One sentence per chunk with surrounding context window |
+| `doc_aware` | Structure-respecting: Markdown headers → sections, PDF page boundaries, DOCX paragraphs |
+
+### Embedding (3 providers)
+
+| Provider | Notes |
+|---|---|
+| OpenAI | `text-embedding-3-small` default · requires `OPENAI_API_KEY` |
+| HuggingFace | `all-MiniLM-L6-v2` default · runs locally, no key needed |
+| Ollama | `nomic-embed-text` default · requires Ollama container |
+
+### Vector stores (2 options)
+
+| Store | Notes |
+|---|---|
+| ChromaDB | Lightweight, built-in, good for local experimentation *(default)* |
+| pgvector | Production-grade, SQL-compatible, shares the Postgres container |
+
+### Retrieval (4 strategies)
+
+| Strategy | Description |
+|---|---|
+| `similarity` | Cosine similarity over the vector store |
+| `mmr` | Maximal Marginal Relevance — balances relevance with diversity |
+| `hybrid` | BM25 keyword search + vector search, score fusion *(recommended)* |
+| `multi_query` | LLM generates N query variants, results are union-merged |
+
+All retrievers support **document-scoped queries** — select specific documents in the chat sidebar to restrict retrieval to only those files.
+
+### Reranker (optional, 3 options)
+
+| Option | Notes |
+|---|---|
+| Cohere Rerank | Cloud API · requires valid `COHERE_API_KEY` |
+| HuggingFace cross-encoder | Runs locally, no key needed |
+| LLM-based | Uses the agent's configured LLM to score and reorder chunks |
+
+Cohere availability is validated on startup (real API call, cached 5 min). If the key is missing or invalid, the Cohere option is shown disabled in the UI with an "API KEY NOT CONFIGURED" tooltip.
+
+### LLM (3 providers)
+
+| Provider | Models |
+|---|---|
+| OpenAI | `gpt-4o` default |
+| Anthropic | `claude-sonnet-4-6` default |
+| Ollama | `llama3.2` default · runs fully locally |
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- Docker + Docker Compose
+- API keys for whichever cloud providers you want to use (all optional if using Ollama)
+
+### 1. Clone and configure
+
+```bash
+git clone <repo>
+cd RAGman
+cp .env.example .env
+```
+
+Edit `.env` and fill in the keys you have:
+
+```env
+# Required — infrastructure (pre-filled for local Docker)
+DATABASE_URL=postgresql+asyncpg://ragman:ragman@postgres:5432/ragman
+REDIS_URL=redis://redis:6379/0
+CHROMA_HOST=chroma
+CHROMA_PORT=8000
+OLLAMA_BASE_URL=http://ollama:11434
+
+# Optional — cloud providers (leave blank to use Ollama only)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+COHERE_API_KEY=...
+
+# App settings
+APP_ENV=development
+LOG_LEVEL=INFO
+UPLOAD_DIR=/app/uploads
+MAX_UPLOAD_SIZE_MB=50
+QUERY_CACHE_TTL=3600
+QUERY_CACHE_MAX_PER_AGENT=100
+```
+
+### 2. Start the stack
+
+```bash
+docker compose up --build
+```
+
+This starts: FastAPI API, ARQ worker, PostgreSQL + pgvector, Redis, ChromaDB, Ollama.
+
+The API is available at `http://localhost:8000`. Interactive API docs at `http://localhost:8000/docs`.
+
+### 3. Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+### 4. Pull an Ollama model (if using local LLMs)
+
+```bash
+docker exec -it ragman-ollama-1 ollama pull llama3.2
+docker exec -it ragman-ollama-1 ollama pull nomic-embed-text
+```
+
+---
+
+## Usage
+
+### Creating an agent
+
+1. Click **New agent** on the dashboard
+2. Step through the wizard — name, ingestion type, chunking strategy, embedding provider, vector store, retriever, optional reranker, LLM
+3. Save — the agent is created with your pipeline configuration
+
+### Ingesting documents
+
+1. Open an agent → **Documents** tab
+2. Upload one or more files (PDF, DOCX, TXT, MD)
+3. Ingestion runs asynchronously in the ARQ worker — watch the step-by-step progress indicator
+4. Status moves from `pending → ingesting → ready` (or `failed` with an error message)
+
+### Chatting
+
+1. Open an agent → **Chat** tab
+2. Ask questions about your documents
+3. Responses stream token-by-token via SSE
+4. Sources panel shows retrieved chunks with scores and page references
+5. **Document filtering** — click individual documents in the sidebar to restrict retrieval to only those files. The header shows "N of M selected"; click **All** to reset.
+
+### Document Overview (per-document analytics)
+
+Click any document filename to open its overview. Four tabs:
+
+| Tab | What it shows |
+|---|---|
+| **Chunks** | All stored chunks with metadata, filterable |
+| **Chunking** | Side-by-side preview: current chunks vs. any strategy with custom params. Apply re-ingests with the new strategy. |
+| **Retrieval** | Run a query through all four retrievers in parallel, compare ranked results and score distributions on a scatter chart |
+| **Reranker** | *(appears only when agent has a reranker configured)* Run a query, see chunks before and after reranking side by side |
+| **Embeddings** | UMAP 2D scatter of all chunk embeddings + cosine similarity heatmap |
+
+### Editing an agent
+
+Open an agent → **Edit** (top right). The edit wizard skips the system prompt and guardrails tabs and lets you jump freely between stages — save from any tab without stepping through the entire flow.
+
+---
+
+## Project structure
+
+```
+RAGman/
+├── app/
+│   ├── api/
+│   │   └── routes/
+│   │       ├── agents.py      # CRUD for agents
+│   │       ├── documents.py   # upload, ingest, chunks, retrieval, rerank, embeddings
+│   │       └── query.py       # streaming + cached Q&A
+│   ├── core/
+│   │   ├── config.py          # pydantic-settings, reads .env
+│   │   ├── database.py        # async SQLAlchemy engine + session
+│   │   └── cache.py           # Redis connection pool
+│   ├── models/
+│   │   ├── agent.py           # Agent + Document SQLAlchemy models
+│   │   └── schemas.py         # Pydantic request/response schemas
+│   ├── pipeline/
+│   │   ├── context.py         # PipelineContext dataclass (shared state)
+│   │   ├── executor.py        # orchestrates ingestion and query pipelines
+│   │   ├── registry.py        # @register decorator + task lookup
+│   │   └── tasks/
+│   │       ├── ingestion/     # pdf · docx · text
+│   │       ├── chunking/      # fixed_size · recursive · semantic · sentence_window · doc_aware
+│   │       ├── embedding/     # openai · huggingface · ollama
+│   │       ├── vector_store/  # chroma · pgvector
+│   │       ├── retriever/     # similarity · mmr · hybrid · multi_query
+│   │       ├── reranker/      # cohere · huggingface · llm
+│   │       └── generator/     # openai · anthropic · ollama
+│   ├── worker/
+│   │   ├── settings.py        # ARQ worker config
+│   │   └── tasks.py           # background ingestion job
+│   └── main.py                # FastAPI app, middleware, capability check
+├── frontend/
+│   └── src/
+│       ├── api/               # React Query hooks (agents, documents, overview, stream)
+│       ├── components/
+│       │   ├── dashboard/     # agent list, empty state
+│       │   ├── detail/        # agent detail, chat, documents, settings tabs
+│       │   ├── overview/      # per-document analytics tabs
+│       │   ├── wizard/        # multi-step pipeline builder
+│       │   └── shared/        # modal, status badge, pipeline chips, help panel
+│       ├── data/pipeline.ts   # pipeline metadata (labels, options, defaults)
+│       └── types/index.ts     # shared TypeScript types
+├── migrations/                # Alembic migration scripts
+├── docker-compose.yml
+├── Dockerfile                 # multi-stage uv build
+└── .env.example
+```
+
+### Adding a new pipeline stage implementation
+
+All pipeline tasks use a registry pattern. To add a new chunking strategy (for example):
+
+```python
+# app/pipeline/tasks/chunking/my_strategy.py
+from app.pipeline.base import BaseTask
+from app.pipeline.context import PipelineContext
+from app.pipeline.registry import register
+
+@register("chunking", "my_strategy")
+class MyChunkingTask(BaseTask):
+    async def run(self, context: PipelineContext) -> PipelineContext:
+        # context.documents → list[Document]
+        # populate context.chunks → list[Chunk]
+        return context
+```
+
+Then add the key to the `ChunkingConfig.type` Literal in `app/models/schemas.py` and the frontend label in `frontend/src/data/pipeline.ts`. No other changes needed — the registry picks it up automatically.
+
+---
+
+## API reference highlights
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/agents` | List all agents |
+| `POST` | `/api/v1/agents` | Create agent |
+| `PUT` | `/api/v1/agents/{id}` | Update agent pipeline config |
+| `DELETE` | `/api/v1/agents/{id}` | Delete agent + embeddings |
+| `POST` | `/api/v1/agents/{id}/documents` | Upload documents (multipart) |
+| `GET` | `/api/v1/agents/{id}/documents/{docId}/chunks` | Fetch stored chunks |
+| `POST` | `/api/v1/agents/{id}/documents/{docId}/rechunk` | Preview alternative chunking |
+| `POST` | `/api/v1/agents/{id}/documents/{docId}/reprocess` | Re-ingest with new chunking |
+| `POST` | `/api/v1/agents/{id}/documents/{docId}/retrieve` | Test retrieval strategies |
+| `POST` | `/api/v1/agents/{id}/documents/{docId}/rerank` | Test reranking (before/after) |
+| `GET` | `/api/v1/agents/{id}/documents/{docId}/embeddings` | UMAP + heatmap data |
+| `POST` | `/api/v1/agents/{id}/query` | Q&A — streaming SSE or cached JSON |
+| `GET` | `/api/v1/capabilities` | Which provider keys are valid |
+| `GET` | `/health` | Health check |
+
+Full interactive docs: `http://localhost:8000/docs`
+
+---
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | — | Async postgres connection string |
+| `REDIS_URL` | — | Redis connection string |
+| `CHROMA_HOST` | `chroma` | ChromaDB hostname |
+| `CHROMA_PORT` | `8000` | ChromaDB port |
+| `OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama API base URL |
+| `OPENAI_API_KEY` | `""` | OpenAI key (embedding + generation) |
+| `ANTHROPIC_API_KEY` | `""` | Anthropic key (generation) |
+| `COHERE_API_KEY` | `""` | Cohere key (reranking) · validated on startup |
+| `APP_ENV` | `development` | Environment tag |
+| `LOG_LEVEL` | `INFO` | Python logging level |
+| `UPLOAD_DIR` | `/app/uploads` | Where uploaded files are stored |
+| `MAX_UPLOAD_SIZE_MB` | `50` | Per-file upload limit |
+| `QUERY_CACHE_TTL` | `3600` | Redis cache TTL in seconds |
+| `QUERY_CACHE_MAX_PER_AGENT` | `100` | Max cached queries per agent |
+
+---
+
+## Development
+
+### Running without Docker (API only)
+
+```bash
+# Install dependencies with uv
+uv sync
+
+# Run migrations
+uv run alembic upgrade head
+
+# Start the API
+uv run uvicorn app.main:app --reload --port 8000
+
+# Start the worker (separate terminal)
+uv run python -m arq app.worker.settings.WorkerSettings
+```
+
+Requires Postgres, Redis, and Chroma running locally or via Docker.
+
+### Linting and type checking
+
+```bash
+uv run ruff check .
+uv run mypy app/
+```
+
+### Rebuilding after backend changes
+
+```bash
+docker compose up --build api worker
+```
+
+Frontend changes (Vite) hot-reload automatically — no rebuild needed.

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="32" height="32" fill="none">
+  <title>RAGman</title>
+  
+  <path class="bg stroke" d="M80 8 L141 43 L141 117 L80 152 L19 117 L19 43 Z" stroke-width="3" stroke-linejoin="round"></path>
+  <circle class="fill" cx="80" cy="8" r="5"></circle>
+  <circle class="fill" cx="141" cy="43" r="5"></circle>
+  <circle class="fill" cx="141" cy="117" r="5"></circle>
+  <circle class="fill" cx="80" cy="152" r="5"></circle>
+  <circle class="fill" cx="19" cy="117" r="5"></circle>
+  <circle class="fill" cx="19" cy="43" r="5"></circle>
+  <path class="stroke" d="M58 50 L58 116 M58 50 L92 50 C106 50 113 57 113 67 C113 77 106 84 92 84 L58 84 M88 84 L113 116" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+  <circle class="sep" cx="113" cy="67" r="7" fill="#F59E0B" stroke-width="2"></circle>
+</svg>

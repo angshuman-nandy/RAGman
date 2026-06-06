@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>RAGman Logo — Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --cream: #FDF6EC;
+      --paper: #FFFCF7;
+      --ink: #2A1A10;
+      --ink-soft: #5C4332;
+      --ink-mute: #8B6F58;
+      --terra: #C2410C;
+      --amber: #F59E0B;
+      --night: #1F140C;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      padding: 48px 32px 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    header { margin-bottom: 40px; }
+    .kicker {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--terra);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin: 0 0 8px;
+    }
+    .lede {
+      font-size: 15px;
+      color: var(--ink-soft);
+      max-width: 540px;
+      margin: 0;
+      line-height: 1.5;
+    }
+    section { margin-top: 48px; }
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      margin: 0 0 16px;
+    }
+    .grid { display: grid; gap: 16px; }
+    .card {
+      background: var(--paper);
+      border: 1px solid rgba(42,26,16,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .card .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .dark { background: var(--night); border-color: rgba(255,255,255,0.06); }
+    .dark .label { color: rgba(255,255,255,0.45); }
+    .dark .wordmark-text { color: var(--cream); }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .sizes {
+      display: flex;
+      align-items: flex-end;
+      gap: 28px;
+      justify-content: center;
+      padding: 8px 0;
+    }
+    .sizes .stack { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .sizes .stack .l {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-mute);
+    }
+
+    .wordmark-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .wordmark-text {
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    code, .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: rgba(194,65,12,0.08);
+      color: var(--terra);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sw {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sw .chip {
+      width: 56px; height: 56px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .sw .meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-mute); }
+    .sw .hex { font-size: 11px; color: var(--ink); }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(42,26,16,0.1);
+      font-size: 12.5px;
+      color: var(--ink-mute);
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Logo Handoff · Full Hex</div>
+    <h1>RAGman</h1>
+    <p class="lede">Monogram R inside a hexagonal knowledge-graph frame, with an amber hub node anchoring the R's bowl. Warm palette: cream, terracotta, amber.</p>
+  </header>
+
+  <section>
+    <h2>Primary mark</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="label">Light</div>
+        <img src="svg/ragman-icon.svg" width="160" height="160" alt="RAGman light"/>
+      </div>
+      <div class="card dark">
+        <div class="label">Dark</div>
+        <img src="svg/ragman-icon-dark.svg" width="160" height="160" alt="RAGman dark"/>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Wordmark</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="label">Light</div>
+        <div class="wordmark-row">
+          <img src="svg/ragman-icon.svg" width="40" height="40" alt=""/>
+          <span class="wordmark-text">RAGman</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <div class="label">Dark</div>
+        <div class="wordmark-row">
+          <img src="svg/ragman-icon-dark.svg" width="40" height="40" alt=""/>
+          <span class="wordmark-text">RAGman</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Size scale</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="label">Light</div>
+        <div class="sizes">
+          <div class="stack"><img src="svg/ragman-icon.svg" width="64" height="64" alt=""/><span class="l">64</span></div>
+          <div class="stack"><img src="svg/ragman-icon.svg" width="48" height="48" alt=""/><span class="l">48</span></div>
+          <div class="stack"><img src="svg/ragman-icon.svg" width="32" height="32" alt=""/><span class="l">32</span></div>
+          <div class="stack"><img src="svg/ragman-icon.svg" width="24" height="24" alt=""/><span class="l">24</span></div>
+          <div class="stack"><img src="svg/ragman-icon.svg" width="16" height="16" alt=""/><span class="l">16</span></div>
+        </div>
+      </div>
+      <div class="card dark">
+        <div class="label">Dark</div>
+        <div class="sizes">
+          <div class="stack"><img src="svg/ragman-icon-dark.svg" width="64" height="64" alt=""/><span class="l">64</span></div>
+          <div class="stack"><img src="svg/ragman-icon-dark.svg" width="48" height="48" alt=""/><span class="l">48</span></div>
+          <div class="stack"><img src="svg/ragman-icon-dark.svg" width="32" height="32" alt=""/><span class="l">32</span></div>
+          <div class="stack"><img src="svg/ragman-icon-dark.svg" width="24" height="24" alt=""/><span class="l">24</span></div>
+          <div class="stack"><img src="svg/ragman-icon-dark.svg" width="16" height="16" alt=""/><span class="l">16</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mono variant — uses <code>currentColor</code></h2>
+    <div class="grid grid-2">
+      <div class="card" style="color: var(--terra);">
+        <div class="label">Terracotta on light</div>
+        <img src="svg/ragman-icon-mono.svg" width="120" height="120" alt=""/>
+      </div>
+      <div class="card dark" style="color: var(--cream);">
+        <div class="label">Cream on dark</div>
+        <img src="svg/ragman-icon-mono.svg" width="120" height="120" alt=""/>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Palette</h2>
+    <div class="card" style="align-items: flex-start;">
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#FDF6EC; border-color: rgba(0,0,0,.1);"></div><span class="hex">#FDF6EC</span><span class="meta">cream</span></div>
+        <div class="sw"><div class="chip" style="background:#2A1A10;"></div><span class="hex">#2A1A10</span><span class="meta">night</span></div>
+        <div class="sw"><div class="chip" style="background:#C2410C;"></div><span class="hex">#C2410C</span><span class="meta">terracotta</span></div>
+        <div class="sw"><div class="chip" style="background:#FB7156;"></div><span class="hex">#FB7156</span><span class="meta">coral</span></div>
+        <div class="sw"><div class="chip" style="background:#F59E0B;"></div><span class="hex">#F59E0B</span><span class="meta">amber</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Files: <code>svg/ragman-icon.svg</code> · <code>svg/ragman-icon-dark.svg</code> · <code>svg/ragman-icon-mono.svg</code> · <code>svg/favicon.svg</code> · <code>react/RagmanLogo.jsx</code>. See <code>README.md</code> for integration.
+  </footer>
+
+</div>
+</body>
+</html>
