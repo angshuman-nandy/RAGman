@@ -1,0 +1,14 @@
+# Railway configuration for the RAGman API service.
+# Deploy this repository and point Railway at this file for the "api" service.
+# The "worker" service uses the same Dockerfile with a different start command
+# (configure that via the Railway dashboard — see RAILWAY_DEPLOYMENT.md).
+
+[build]
+dockerfile = "Dockerfile"
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
