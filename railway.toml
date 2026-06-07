@@ -9,7 +9,5 @@ dockerfile = "Dockerfile"
 
 [deploy]
 startCommand = "sh -c 'if [ \"$SERVICE_MODE\" = \"worker\" ]; then python -m arq app.worker.settings.WorkerSettings; else uvicorn app.main:app --host 0.0.0.0 --port $PORT; fi'"
-healthcheckPath = "/health"
-healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
