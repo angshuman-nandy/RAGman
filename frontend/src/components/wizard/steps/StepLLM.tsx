@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Angshuman Nandy
 import { PIPELINE_META } from '../../../data/pipeline'
 import { Icon } from '../../icons/Icon'
+import { useCapabilities } from '../../../api/capabilities'
 import type { WizardForm, LLMProvider } from '../../../types'
 
 interface StepProps {
@@ -11,9 +12,13 @@ interface StepProps {
   errors: Record<string, string>
 }
 
+const LITE_BLOCKED_LLM: LLMProvider[] = ['ollama']
+
 export function StepLLM({ form, onPipelinePatch }: StepProps) {
   const opts = PIPELINE_META.llm.options
   const current = form.pipeline.llm
+  const { data: capabilities } = useCapabilities()
+  const isLite = capabilities?.lite_mode ?? false
 
   const setLLM = (patch: Partial<WizardForm['pipeline']['llm']>) => {
     onPipelinePatch({ llm: { ...current, ...patch } })
@@ -34,16 +39,25 @@ export function StepLLM({ form, onPipelinePatch }: StepProps) {
       <div className="radio-cards">
         {Object.entries(opts).map(([k, o]) => {
           const selected = current.provider === k
+          const blocked = isLite && LITE_BLOCKED_LLM.includes(k as LLMProvider)
           return (
             <button
               key={k}
               type="button"
-              className={`radio-card${selected ? ' selected' : ''}`}
-              onClick={() => setLLM({ provider: k as LLMProvider, model: o.default ?? '' })}
+              className={`radio-card${selected ? ' selected' : ''}${blocked ? ' disabled' : ''}`}
+              onClick={() => !blocked && setLLM({ provider: k as LLMProvider, model: o.default ?? '' })}
+              disabled={blocked}
+              title={blocked ? 'Not available in Lite mode' : undefined}
+              style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
             >
               <div className="text">
                 <div className="title-row">
                   <span className="title">{o.label}</span>
+                  {blocked && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-faint)', marginLeft: 6, padding: '1px 6px', border: '1px solid var(--border)', borderRadius: 10 }}>
+                      Lite unavailable
+                    </span>
+                  )}
                 </div>
                 {o.sub && <div className="sub">{o.sub}</div>}
               </div>

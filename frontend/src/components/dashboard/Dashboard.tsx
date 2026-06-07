@@ -5,6 +5,7 @@ import { Icon } from '../icons/Icon'
 import { AgentCard } from './AgentCard'
 import { EmptyDashboard } from './EmptyDashboard'
 import { useAgents, useDeleteAgent } from '../../api/agents'
+import { useCapabilities } from '../../api/capabilities'
 
 // Props are optional so the component works both as a routed page (no props)
 // and as a controlled component (with explicit callbacks).
@@ -19,6 +20,8 @@ export function Dashboard({ onOpen, onEdit, onCreate, onDelete }: DashboardProps
   const navigate = useNavigate()
   const { data, isLoading, isError, error } = useAgents()
   const deleteAgent = useDeleteAgent()
+  const { data: capabilities } = useCapabilities()
+  const isLite = capabilities?.lite_mode ?? false
 
   const agents = data?.items ?? []
   const total = data?.total ?? 0
@@ -74,6 +77,31 @@ export function Dashboard({ onOpen, onEdit, onCreate, onDelete }: DashboardProps
 
   return (
     <main className="page">
+      {isLite && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            padding: '10px 14px',
+            marginBottom: 18,
+            background: 'rgba(99,102,241,.1)',
+            border: '1px solid rgba(99,102,241,.3)',
+            borderRadius: 'var(--r-md)',
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: 'var(--text-dim)',
+          }}
+        >
+          <Icon name="zap" size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--accent)' }} />
+          <span>
+            <strong style={{ color: 'var(--accent)' }}>RAGman Lite</strong>
+            {' '}— running in cloud-optimised mode.
+            Ollama (local LLMs) and HuggingFace models are not available in this deployment.
+            Use OpenAI or Anthropic for LLMs, and OpenAI for embeddings.
+          </span>
+        </div>
+      )}
       <div className="page-head">
         <div>
           <h1 className="title">Agents</h1>

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 50
     QUERY_CACHE_TTL: int = 3600
     QUERY_CACHE_MAX_PER_AGENT: int = 100
+    LITE_MODE: bool = False
 
     # ── Validators ────────────────────────────────────────────────────────────
 

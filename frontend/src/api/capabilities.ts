@@ -7,6 +7,7 @@ export interface Capabilities {
   cohere: boolean
   openai: boolean
   anthropic: boolean
+  lite_mode: boolean
 }
 
 export function useCapabilities() {

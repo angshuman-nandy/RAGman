@@ -104,4 +104,5 @@ async def get_capabilities() -> dict[str, bool]:
         "cohere": await _validate_cohere(settings.COHERE_API_KEY),
         "openai": bool(settings.OPENAI_API_KEY),
         "anthropic": bool(settings.ANTHROPIC_API_KEY),
+        "lite_mode": settings.LITE_MODE,
     }
