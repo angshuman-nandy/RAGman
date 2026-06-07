@@ -38,6 +38,7 @@ class DOCXIngestionTask(BaseTask):
             metadata={
                 "source": filename,
                 "file_type": "docx",
+                "doc_id": context.metadata.get("doc_id", ""),
             },
         )
         context.documents.append(doc)

@@ -60,6 +60,7 @@ class GuardrailsConfig(BaseModel):
     forbidden_content: list[str] = []
     format_rules: str = ""
     confidence_threshold: float = 0.0
+    history_retention: int = 25
 
 
 class PipelineConfig(BaseModel):
@@ -148,3 +149,35 @@ class QueryResponse(BaseModel):
 
     answer: str
     sources: list[dict]
+
+
+# ---------------------------------------------------------------------------
+# History schemas
+# ---------------------------------------------------------------------------
+
+
+class HistoryChunk(BaseModel):
+    doc_id: str
+    filename: str
+    chunk_index: int
+    score: float
+    content: str
+
+
+class QueryHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    agent_id: uuid.UUID
+    question: str
+    answer: str
+    retrieval_strategy: str
+    document_filter: list[str] | None
+    retrieved_chunks: list[HistoryChunk]
+    reranked_chunks: list[HistoryChunk] | None
+    created_at: datetime
+
+
+class QueryHistoryListResponse(BaseModel):
+    items: list[QueryHistoryResponse]
+    total: int

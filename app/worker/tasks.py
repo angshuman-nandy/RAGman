@@ -85,6 +85,7 @@ async def run_ingestion_job(
                     "file_path": file_path,
                     "filename": filename,
                     "file_type": file_type,
+                    "doc_id": doc_id,
                 }
             )
 
@@ -128,3 +129,40 @@ async def run_ingestion_job(
             )
     finally:
         await engine.dispose()
+
+
+async def run_deletion_job(
+    ctx,
+    *,
+    doc_id: str,
+    agent_id: str,
+    pipeline_config: dict,
+    file_path: str,
+) -> None:
+    """ARQ job: delete all chunks and vectors belonging to a document."""
+    logger.info("Starting deletion job for doc=%s agent=%s", doc_id, agent_id)
+
+    vs_type: str = (pipeline_config.get("vector_store") or {}).get("type", "chroma")
+
+    try:
+        if vs_type == "pgvector":
+            from app.pipeline.tasks.vector_store.pgvector import PGVectorStoreTask
+            deleted = await PGVectorStoreTask().delete_chunks_for_doc(agent_id, doc_id)
+        else:
+            from app.pipeline.tasks.vector_store.chroma import ChromaVectorStoreTask
+            deleted = await ChromaVectorStoreTask().delete_chunks_for_doc(agent_id, doc_id)
+
+        logger.info(
+            "run_deletion_job: removed %d vectors for doc=%s (store=%s)", deleted, doc_id, vs_type
+        )
+    except Exception as exc:
+        logger.exception("run_deletion_job: vector deletion failed for doc=%s: %s", doc_id, exc)
+
+    # Remove the uploaded file from disk
+    import os
+    try:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info("run_deletion_job: deleted file %s", file_path)
+    except Exception as exc:
+        logger.warning("run_deletion_job: could not delete file %s: %s", file_path, exc)

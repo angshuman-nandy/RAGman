@@ -8,6 +8,7 @@ import { Modal } from '../shared/Modal'
 import { DocumentsTab } from './DocumentsTab'
 import { ChatTab } from './ChatTab'
 import { SettingsTab } from './SettingsTab'
+import { HistoryTab } from './HistoryTab'
 import { useDocuments } from '../../api/documents'
 import type { Agent } from '../../types'
 
@@ -67,7 +68,7 @@ function DotMenu({ items }: { items: DotMenuItem[] }) {
   )
 }
 
-type TabKey = 'documents' | 'chat' | 'settings'
+type TabKey = 'documents' | 'chat' | 'history' | 'settings'
 
 export function AgentDetail({ agent, onBack, onEdit, onDelete }: AgentDetailProps) {
   const [tab, setTab] = useState<TabKey>('documents')
@@ -151,6 +152,12 @@ export function AgentDetail({ agent, onBack, onEdit, onDelete }: AgentDetailProp
           <Icon name="message" size={14} /> Chat
         </button>
         <button
+          className={`tab ${tab === 'history' ? 'active' : ''}`}
+          onClick={() => setTab('history')}
+        >
+          <Icon name="clock" size={14} /> History
+        </button>
+        <button
           className={`tab ${tab === 'settings' ? 'active' : ''}`}
           onClick={() => setTab('settings')}
         >
@@ -160,6 +167,7 @@ export function AgentDetail({ agent, onBack, onEdit, onDelete }: AgentDetailProp
 
       {tab === 'documents' && <DocumentsTab agent={agent} />}
       {tab === 'chat' && <ChatTab agent={agent} documents={docs} />}
+      {tab === 'history' && <HistoryTab agent={agent} />}
       {tab === 'settings' && <SettingsTab agent={agent} />}
 
       <Modal

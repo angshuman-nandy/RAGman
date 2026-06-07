@@ -311,7 +311,23 @@ class PGVectorStoreTask(BaseTask):
             result = await conn.execute(
                 f"DELETE FROM {table} WHERE metadata->>'source' = $1", source_filename
             )
-            # result is "DELETE N"
+            return int(result.split()[-1])
+        finally:
+            await conn.close()
+
+    async def delete_chunks_for_doc(self, agent_id: str, doc_id: str) -> int:
+        """Delete all chunks tagged with doc_id. Returns count deleted."""
+        table = _table_name(agent_id)
+        conn = await self._get_connection()
+        try:
+            exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name=$1)", table
+            )
+            if not exists:
+                return 0
+            result = await conn.execute(
+                f"DELETE FROM {table} WHERE metadata->>'doc_id' = $1", doc_id
+            )
             return int(result.split()[-1])
         finally:
             await conn.close()

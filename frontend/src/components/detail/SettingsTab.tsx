@@ -230,6 +230,7 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
   const [forbiddenContent, setForbiddenContent] = useState<string[]>(gr?.forbidden_content ?? [])
   const [formatRules, setFormatRules] = useState(gr?.format_rules ?? '')
   const [confidenceThreshold, setConfidenceThreshold] = useState(gr?.confidence_threshold ?? 0)
+  const [historyRetention, setHistoryRetention] = useState(gr?.history_retention ?? 25)
 
   // Sync when agent prop changes
   useEffect(() => {
@@ -237,11 +238,13 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
     setForbiddenContent(gr?.forbidden_content ?? [])
     setFormatRules(gr?.format_rules ?? '')
     setConfidenceThreshold(gr?.confidence_threshold ?? 0)
+    setHistoryRetention(gr?.history_retention ?? 25)
   }, [ // eslint-disable-line react-hooks/exhaustive-deps
     gr?.topic_restrictions,
     gr?.forbidden_content,
     gr?.format_rules,
     gr?.confidence_threshold,
+    gr?.history_retention,
   ])
 
   const addTag = (value: string) => {
@@ -260,7 +263,8 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
       topicRestrictions.trim() === '' &&
       forbiddenContent.length === 0 &&
       formatRules.trim() === '' &&
-      confidenceThreshold === 0
+      confidenceThreshold === 0 &&
+      historyRetention === 25
 
     const newGuardrails: GuardrailsConfig | null = allEmpty
       ? null
@@ -269,6 +273,7 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
           forbidden_content: forbiddenContent,
           format_rules: formatRules.trim(),
           confidence_threshold: confidenceThreshold,
+          history_retention: historyRetention,
         }
 
     await updateAgent.mutateAsync({
@@ -286,6 +291,7 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
     setForbiddenContent(gr?.forbidden_content ?? [])
     setFormatRules(gr?.format_rules ?? '')
     setConfidenceThreshold(gr?.confidence_threshold ?? 0)
+    setHistoryRetention(gr?.history_retention ?? 25)
     onDone()
   }
 
@@ -293,7 +299,8 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
     !!gr?.topic_restrictions ||
     (gr?.forbidden_content?.length ?? 0) > 0 ||
     !!gr?.format_rules ||
-    (gr?.confidence_threshold ?? 0) > 0
+    (gr?.confidence_threshold ?? 0) > 0 ||
+    (gr?.history_retention ?? 25) !== 25
 
   return (
     <div style={cardStyle}>
@@ -325,6 +332,9 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
             )}
             {(gr?.confidence_threshold ?? 0) > 0 && (
               <Chip color="amber">Min score: {gr!.confidence_threshold}</Chip>
+            )}
+            {(gr?.history_retention ?? 25) !== 25 && (
+              <Chip color="blue">History: {gr!.history_retention} entries</Chip>
             )}
           </div>
         ) : (
@@ -476,6 +486,34 @@ function GuardrailsSection({ agent, editing, onEdit, onDone }: GuardrailsSection
             >
               <span>0.00 (off)</span>
               <span>1.00</span>
+            </div>
+          </div>
+
+          {/* History retention */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'var(--text-dim)' }}>
+              History retention
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={historyRetention}
+                onChange={(e) => setHistoryRetention(Math.max(1, parseInt(e.target.value) || 25))}
+                style={{
+                  width: 80,
+                  padding: '6px 10px',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  color: 'var(--text)',
+                  fontSize: 13,
+                }}
+              />
+              <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>
+                conversations stored (oldest deleted when exceeded)
+              </span>
             </div>
           </div>
 

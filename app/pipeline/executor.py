@@ -70,6 +70,7 @@ class PipelineExecutor:
     def __init__(self, agent_id: str, pipeline_config: dict) -> None:
         self.agent_id = agent_id
         self.pipeline_config = pipeline_config
+        self._last_context: "PipelineContext | None" = None
 
     # ------------------------------------------------------------------
     # Helpers
@@ -213,6 +214,10 @@ class PipelineExecutor:
                     f"(avg retrieval score: {avg_score:.2f}, required: {threshold:.2f})"
                 )
                 return
+
+        # Expose the retrieval context for callers that want post-stream metadata
+        # (e.g. query route saving conversation history).
+        self._last_context = context
 
         # --- generator (streaming) ------------------------------------
         # Pipeline config stores LLM settings under "llm" key; registry uses "generator" stage.

@@ -35,6 +35,7 @@ import {
   Menu,
   HelpCircle,
   Zap,
+  Clock,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -74,6 +75,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   menu: Menu,
   help: HelpCircle,
   zap: Zap,
+  clock: Clock,
 }
 
 interface IconProps {
@@ -81,10 +83,11 @@ interface IconProps {
   size?: number
   className?: string
   strokeWidth?: number
+  style?: React.CSSProperties
 }
 
-export function Icon({ name, size = 16, className, strokeWidth = 2 }: IconProps) {
+export function Icon({ name, size = 16, className, strokeWidth = 2, style }: IconProps) {
   const Component = ICON_MAP[name]
   if (!Component) return null
-  return <Component size={size} className={className} strokeWidth={strokeWidth} />
+  return <Component size={size} className={className} strokeWidth={strokeWidth} style={style} />
 }

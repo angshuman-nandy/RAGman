@@ -300,8 +300,19 @@ class ChromaVectorStoreTask(BaseTask):
         count = await collection.count()
         if count == 0:
             return 0
-        # Chroma delete by metadata filter
         existing = await collection.get(where={"source": source_filename}, include=[])
+        ids = existing.get("ids") or []
+        if ids:
+            await collection.delete(ids=ids)
+        return len(ids)
+
+    async def delete_chunks_for_doc(self, agent_id: str, doc_id: str) -> int:
+        """Delete all chunks tagged with doc_id. Returns count deleted."""
+        collection = await self._get_collection(agent_id)
+        count = await collection.count()
+        if count == 0:
+            return 0
+        existing = await collection.get(where={"doc_id": doc_id}, include=[])
         ids = existing.get("ids") or []
         if ids:
             await collection.delete(ids=ids)
