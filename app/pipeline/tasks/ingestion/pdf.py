@@ -43,6 +43,7 @@ class PDFIngestionTask(BaseTask):
                     "source": filename,
                     "page": page_num,
                     "file_type": "pdf",
+                    "doc_id": context.metadata.get("doc_id", ""),
                 },
             )
             context.documents.append(doc)

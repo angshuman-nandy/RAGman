@@ -15,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db_session, get_redis_client, get_settings_dep
 from app.core.config import Settings
-from app.models.agent import Agent, Document as DocumentModel
+from app.core.database import AsyncSessionLocal
+from app.models.agent import Agent, Document as DocumentModel, QueryHistory
 from app.models.schemas import QueryRequest, QueryResponse
+from app.pipeline.context import RetrievedChunk
 from app.pipeline.executor import PipelineExecutor
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,77 @@ def _cache_key(agent_id: uuid.UUID, question: str, document_ids: list[uuid.UUID]
     suffix = "," + ",".join(sorted(str(i) for i in document_ids)) if document_ids else ""
     question_hash = hashlib.md5((question + suffix).encode()).hexdigest()
     return f"query:{agent_id}:{question_hash}"
+
+
+def _serialize_chunks(chunks: list[RetrievedChunk]) -> list[dict]:
+    return [
+        {
+            "doc_id": c.metadata.get("doc_id", ""),
+            "filename": c.metadata.get("source", ""),
+            "chunk_index": int(c.metadata.get("chunk_index", 0)),
+            "score": float(c.score),
+            "content": c.content,
+        }
+        for c in chunks
+    ]
+
+
+async def _save_query_history(
+    *,
+    agent_id: uuid.UUID,
+    agent: Agent,
+    question: str,
+    answer: str,
+    executor: PipelineExecutor,
+    source_filenames: list[str] | None,
+) -> None:
+    ctx = executor._last_context
+    if ctx is None:
+        return
+    pipeline_config = agent.pipeline_config or {}
+    retrieval_strategy = (pipeline_config.get("retriever") or {}).get("type", "similarity")
+    guardrails = pipeline_config.get("guardrails") or {}
+    retention = int(guardrails.get("history_retention", 25))
+    retrieved = _serialize_chunks(ctx.retrieved_chunks)
+    reranked = _serialize_chunks(ctx.reranked_chunks) if ctx.reranked_chunks else None
+
+    async with AsyncSessionLocal() as session:
+        entry = QueryHistory(
+            agent_id=agent_id,
+            question=question,
+            answer=answer,
+            retrieval_strategy=retrieval_strategy,
+            document_filter=source_filenames,
+            retrieved_chunks=retrieved,
+            reranked_chunks=reranked,
+        )
+        session.add(entry)
+        await session.flush()
+
+        # Enforce retention limit — delete oldest entries beyond cap
+        from sqlalchemy import delete, func as sqlfunc, select as sqsel
+        count_result = await session.execute(
+            sqsel(sqlfunc.count()).select_from(QueryHistory).where(
+                QueryHistory.agent_id == agent_id
+            )
+        )
+        count = count_result.scalar_one()
+        if count > retention:
+            # Find the IDs of the oldest entries to delete
+            excess = count - retention
+            oldest = await session.execute(
+                sqsel(QueryHistory.id)
+                .where(QueryHistory.agent_id == agent_id)
+                .order_by(QueryHistory.created_at.asc())
+                .limit(excess)
+            )
+            old_ids = [row[0] for row in oldest.all()]
+            if old_ids:
+                await session.execute(
+                    delete(QueryHistory).where(QueryHistory.id.in_(old_ids))
+                )
+
+        await session.commit()
 
 
 async def _get_agent_or_404(agent_id: uuid.UUID, db: AsyncSession) -> Agent:
@@ -109,14 +182,29 @@ async def query_agent(
     # --- Streaming response ------------------------------------------------
     if body.stream:
         async def event_generator():
+            tokens: list[str] = []
             try:
                 async for token in executor.run_query(question, document_filter=source_filenames):
+                    tokens.append(token)
                     yield f"data: {json.dumps({'token': token})}\n\n"
             except Exception as exc:
                 logger.exception("query_agent: streaming generator raised: %s", exc)
                 yield f"data: {json.dumps({'error': str(exc)})}\n\n"
             finally:
                 yield f"data: {json.dumps({'done': True})}\n\n"
+            # Code here runs when the ASGI framework polls the exhausted generator;
+            # save history after the client has received the done event.
+            try:
+                await _save_query_history(
+                    agent_id=agent_id,
+                    agent=agent,
+                    question=question,
+                    answer="".join(tokens),
+                    executor=executor,
+                    source_filenames=source_filenames,
+                )
+            except Exception as exc:
+                logger.warning("query_agent: history save failed: %s", exc)
 
         return StreamingResponse(
             event_generator(),
@@ -157,5 +245,18 @@ async def query_agent(
         logger.debug("query_agent: cached result under key %r (TTL=%ds)", cache_key, settings.QUERY_CACHE_TTL)
     except Exception as exc:
         logger.warning("query_agent: Redis set failed (%s); result not cached.", exc)
+
+    # Save history for non-streaming path
+    try:
+        await _save_query_history(
+            agent_id=agent_id,
+            agent=agent,
+            question=question,
+            answer=answer,
+            executor=executor,
+            source_filenames=source_filenames,
+        )
+    except Exception as exc:
+        logger.warning("query_agent: history save failed: %s", exc)
 
     return response

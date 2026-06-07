@@ -31,6 +31,7 @@ class TextIngestionTask(BaseTask):
             metadata={
                 "source": filename,
                 "file_type": file_type,
+                "doc_id": context.metadata.get("doc_id", ""),
             },
         )
         context.documents.append(doc)

@@ -17,6 +17,7 @@ const DEFAULT_GUARDRAILS: GuardrailsConfig = {
   forbidden_content: [],
   format_rules: '',
   confidence_threshold: 0,
+  history_retention: 25,
 }
 
 export function StepGuardrails({ form, onPipelinePatch }: StepProps) {

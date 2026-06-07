@@ -234,20 +234,27 @@ async def delete_document(
             detail=f"Document {doc_id} not found for agent {agent_id}.",
         )
 
-    # Remove the document's chunks from the vector store.
-    # Currently ChromaDB does not offer per-document deletion without
-    # storing custom metadata, so we log a warning and skip for now.
-    # Implementations that tag chunks with `doc_id` in metadata can add
-    # targeted deletion here.
-    vector_store_type: str = agent.pipeline_config.get("vector_store", {}).get("type", "")
-    if vector_store_type == "chroma":
-        logger.info(
-            "delete_document: ChromaDB per-document vector deletion not yet "
-            "implemented — orphaned chunks will remain until the agent is deleted."
-        )
+    # Capture what the deletion job needs before removing the DB record.
+    captured_file_path = doc.file_path
+    captured_pipeline_config = agent.pipeline_config
 
     await db.delete(doc)
     await db.commit()
+
+    # Enqueue background job to remove vectors and the uploaded file from disk.
+    settings = get_settings_dep()
+    try:
+        redis = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+        await redis.enqueue_job(
+            "run_deletion_job",
+            doc_id=str(doc_id),
+            agent_id=str(agent_id),
+            pipeline_config=captured_pipeline_config,
+            file_path=captured_file_path,
+        )
+        await redis.aclose()
+    except Exception as exc:
+        logger.error("delete_document: could not enqueue deletion job for doc=%s: %s", doc_id, exc)
 
 
 @router.get("/{doc_id}/chunks")

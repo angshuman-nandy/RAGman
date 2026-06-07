@@ -18,6 +18,7 @@ export interface GuardrailsConfig {
   forbidden_content: string[]
   format_rules: string
   confidence_threshold: number
+  history_retention: number
 }
 
 export interface PipelineConfig {
@@ -121,4 +122,29 @@ export interface EmbeddingsResponse {
   scatter: ScatterPoint[]
   heatmap: number[][]
   labels: string[]
+}
+
+export interface HistoryChunk {
+  doc_id: string
+  filename: string
+  chunk_index: number
+  score: number
+  content: string
+}
+
+export interface QueryHistoryEntry {
+  id: string
+  agent_id: string
+  question: string
+  answer: string
+  retrieval_strategy: string
+  document_filter: string[] | null
+  retrieved_chunks: HistoryChunk[]
+  reranked_chunks: HistoryChunk[] | null
+  created_at: string
+}
+
+export interface QueryHistoryListResponse {
+  items: QueryHistoryEntry[]
+  total: number
 }

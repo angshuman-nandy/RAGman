@@ -84,11 +84,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api.routes import agents, documents, query  # noqa: E402
+from app.api.routes import agents, documents, history, query  # noqa: E402
 
 app.include_router(agents.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(query.router, prefix="/api/v1")
+app.include_router(history.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])
