@@ -10,6 +10,168 @@ RAGman lets you build a complete RAG pipeline through a guided wizard, ingest do
 
 ---
 
+## Screenshots
+
+### Dashboard
+
+![Dashboard — agent list](ss/Screenshot%202026-06-08%20at%202.19.43%20AM.png)
+
+The main agents dashboard. Each card shows the agent's live status (Ready · Ingesting · Failed), its full pipeline configuration as chips (chunking strategy, embedding provider, vector store, retrieval method), and document count. Click **Open** to jump straight to the chat tab.
+
+---
+
+### Creating an agent — the 11-step wizard
+
+#### Step 1 · Basics
+
+![Wizard — Basics](ss/Screenshot%202026-06-08%20at%202.20.26%20AM.png)
+
+Name your agent and add an optional description. The left sidebar lists all 11 pipeline stages; completed stages are checked off as you advance.
+
+#### Step 2 · Ingestion
+
+![Wizard — Ingestion](ss/Screenshot%202026-06-08%20at%202.20.38%20AM.png)
+
+Choose the primary document format. PDF is selected here — RAGman splits PDFs one page per document, preserving page boundaries before chunking.
+
+#### Step 3 · Chunking
+
+![Wizard — Chunking](ss/Screenshot%202026-06-08%20at%202.21.07%20AM.png)
+
+Pick a chunking strategy. **Recursive** is the recommended default — it tries paragraphs → sentences → words, giving clean boundaries for most content. Advanced parameters expose chunk size and overlap.
+
+#### Step 4 · Embedding
+
+![Wizard — Embedding](ss/Screenshot%202026-06-08%20at%202.21.15%20AM.png)
+
+Select an embedding provider. OpenAI's `text-embedding-3-small` is shown selected; HuggingFace Sentence Transformers and Ollama both run fully locally with no API key.
+
+#### Step 5 · Vector Store
+
+![Wizard — Vector Store](ss/Screenshot%202026-06-08%20at%202.21.26%20AM.png)
+
+Choose where vectors are persisted. ChromaDB is the lightweight built-in default; PostgreSQL + pgvector is the production-grade option sharing the existing Postgres container.
+
+#### Step 6 · Retriever
+
+![Wizard — Retriever](ss/Screenshot%202026-06-08%20at%202.21.31%20AM.png)
+
+Select a retrieval strategy. **Hybrid BM25 + Vector** (recommended) combines keyword and semantic search for the broadest coverage. Top K and BM25/vector weight are tunable in the advanced panel.
+
+#### Step 7 · Reranker *(optional)*
+
+![Wizard — Reranker](ss/Screenshot%202026-06-08%20at%202.21.37%20AM.png)
+
+Optionally add a reranking pass after retrieval. **Cohere Rerank** (cloud, API key required) is selected; **HuggingFace cross-encoder** runs locally, and **LLM-based** uses the agent's own model to score chunks.
+
+#### Step 8 · LLM
+
+![Wizard — LLM](ss/Screenshot%202026-06-08%20at%202.21.42%20AM.png)
+
+Choose the generation model. Anthropic Claude (`claude-sonnet-4-6`) is selected. Temperature and max tokens are adjustable. OpenAI and Ollama (fully local) are the other options.
+
+#### Step 9 · System Prompt *(optional)*
+
+![Wizard — System Prompt](ss/Screenshot%202026-06-08%20at%202.21.50%20AM.png)
+
+Customise the agent's personality. **Append** mode adds your instructions after the built-in RAG prompt; **Replace** mode gives complete control over the system prompt. The character counter helps you stay within model context limits.
+
+#### Step 10 · Guardrails *(optional)*
+
+![Wizard — Guardrails](ss/Screenshot%202026-06-08%20at%202.21.58%20AM.png)
+
+Set quality controls: define a topic scope (questions outside it are politely declined), list forbidden subjects, specify response format rules, and set a minimum confidence score below which the agent refuses to answer.
+
+---
+
+### Documents tab
+
+#### Empty state — drop zone
+
+![Documents tab — empty state](ss/Screenshot%202026-06-08%20at%202.22.22%20AM.png)
+
+A fresh agent with no documents yet. Drop PDF, DOCX, TXT, or Markdown files onto the upload zone. The tab bar (Documents · Chat · History · Settings) is visible across the top.
+
+#### Ingestion pipeline progress
+
+![Documents tab — ingestion in progress](ss/Screenshot%202026-06-08%20at%202.22.32%20AM.png)
+
+After dropping a PDF, a progress modal tracks each pipeline stage in the ARQ background worker: **Document parsing** → **Chunking** → **Embedding** → **Storing vectors**. The spinner shows which step is active; completed steps are checked.
+
+---
+
+### Document overview (per-document analytics)
+
+Click any document filename to open a four-tab analytics view.
+
+#### Chunks tab
+
+![Document overview — Chunks](ss/Screenshot%202026-06-08%20at%202.22.59%20AM.png)
+
+All 42 stored chunks listed with their content preview and character count. A search bar lets you filter by text content; clicking a chunk shows its full text and metadata.
+
+#### Chunking tab — strategy comparison
+
+![Document overview — Chunking](ss/Screenshot%202026-06-08%20at%202.23.16%20AM.png)
+
+Current chunks on the left; a live preview of any alternative strategy on the right. Switch strategy, tune chunk size, and click **Re-ingest** to switch without re-uploading the file.
+
+#### Retrieval tab — all strategies in parallel
+
+![Document overview — Retrieval query](ss/Screenshot%202026-06-08%20at%202.23.53%20AM.png)
+
+Enter a query and run it through all four retrieval strategies simultaneously. Each strategy's Top K and tuning parameters are set independently before running.
+
+#### Retrieval results + score chart
+
+![Document overview — Retrieval results](ss/Screenshot%202026-06-08%20at%202.24.09%20AM.png)
+
+Results from each strategy laid out side by side. A **Score vs Rank** scatter chart below shows how steeply relevance drops off — useful for deciding how many chunks to pass to the LLM.
+
+#### Reranker tab — before and after
+
+![Document overview — Reranker](ss/Screenshot%202026-06-08%20at%202.24.36%20AM.png)
+
+Original retrieval order on the left; reranked order on the right. Switch between Cohere Rerank, HuggingFace cross-encoder, and LLM-based and click **Run** to compare reordering behaviour on the same query.
+
+#### Embeddings tab — UMAP + heatmap
+
+![Document overview — Embeddings](ss/Screenshot%202026-06-08%20at%202.24.52%20AM.png)
+
+A UMAP 2D projection of all chunk vectors (clusters indicate semantic similarity groups) and a cosine similarity heatmap across all chunks. Hover any point on the scatter to see a content preview.
+
+---
+
+### Chat tab
+
+![Chat tab — streamed answer](ss/Screenshot%202026-06-08%20at%202.25.32%20AM.png)
+
+The primary Q&A interface. Indexed documents appear in the left sidebar with chunk counts; click any document to scope retrieval to only that file (or select multiple for a subset). Answers stream token-by-token via SSE. The active pipeline configuration (LLM, model) is shown below the document list.
+
+---
+
+### History tab
+
+#### Conversation history list
+
+![History tab — list view](ss/Screenshot%202026-06-08%20at%202.25.57%20AM.png)
+
+All past Q&A sessions for this agent in a two-panel layout. Metadata chips on each entry show the retrieval strategy used, whether reranking was applied, and how many chunks were retrieved. The right panel shows the full question and streamed answer.
+
+#### History detail — retrieval scores
+
+![History — retrieval scores and context chunks](ss/Screenshot%202026-06-08%20at%202.26.02%20AM.png)
+
+Drill into any past query: see which documents were used, a bar chart of per-chunk retrieval scores (colour-coded by score threshold), and the full context sent to the LLM — click **Show full chunk** on any entry to expand the exact text the model saw.
+
+#### History detail — context chunks
+
+![History — context chunks continued](ss/Screenshot%202026-06-08%20at%202.26.06%20AM.png)
+
+Continuation of the context chunk list. Each chunk shows its source document, chunk index, and relevance score, making it easy to diagnose why the model gave a particular answer.
+
+---
+
 ## Stack
 
 | Layer | Technology |
